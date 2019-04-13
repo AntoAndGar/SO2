@@ -1,52 +1,33 @@
 #!/bin/bash
 
-function opts {
-    while getopts ":be" opt; do
-        case $opt in
-            b)
-                echo "-b was triggered!" >&2
-                ;;
-            e)
-                echo "-e was triggered!" >&2
-                ;;
-            \?)
-                echo "Invalid option: -$OPTARG" >&2
-                exit 1
-                ;;
-            :)
-                echo "Option -$OPTARG requires an argument." >&2
-                exit 1
-                ;;
-        esac
-    done
-}
+dir=""
 
 function usage {
-    #verifica che esista il file in input
-    [ -d "$1" ] 
-    echo "Uso: $(basename $0) [opzioni] directory"
+    echo "Uso: $(basename $0) [opzioni] directory" >&2
     exit 10
 }
 
+[ "$#" -lt 1 ] || [ "$#" -gt 2 ] && usage ||
 
-while getopts ":b:e" opt; do
+while getopts ":b:e:" opt; do
     case $opt in
         b)
-            echo "-b was triggered!" >&2
+            #echo "-b was triggered!" >&2
+            ! [ -d "$OPTARG" ] && usage ||
+            dir=$OPTARG
             ;;
         e)
-            echo "-e was triggered!" >&2
+            #echo "-e was triggered!" >&2
+            ! [ -d "$OPTARG" ] && usage ||
+            dir=$OPTARG
             ;;
         \?)
-            echo "Invalid option: -$OPTARG" >&2
-            exit 1
+            usage
             ;;
         :)
-            echo "Option -$OPTARG requires an argument." >&2
-            exit 1
+            usage
             ;;
     esac
 done
 
-[ "$#" -gt 1 ] && usage
-
+#continuare qui
