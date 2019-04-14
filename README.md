@@ -9,7 +9,7 @@ dove le opzioni sono le seguenti (si consiglia l'uso del comando bash **getopts*
 vedere http://wiki.bash-hackers.org/howto/getopts_tutorial):
 * -e
 * -b dir (default: vuoto; nel seguito, sia b il valore dato a tale opzione)
-L'invocazione dello script e da considerarsi sbagliata nei seguenti casi:
+L'invocazione dello script è da considerarsi sbagliata nei seguenti casi:
 * viene passata un'opzione non esistente (ovvero, non compresa in quelle
 elencate sopra);
 * viene passata un'opzione che necessita un argomento, ma senza passare
@@ -19,7 +19,7 @@ l'argomento;
 
 Se si verifica uno dei casi di errore appena elencati, l'output dovrà consistere
 nella sola riga, su standard error, **Uso: _s_ [opzioni] directory**, con _s_ nome
-dello script, e lo script dovra terminare con exit status 10.
+dello script, e lo script dovrà terminare con exit status 10.
 Nel seguito, sia _d_ il valore dato all'argomento dello script. Se _d_ non esiste, o
 è un file regolare e non una directory, o non ha entrambi i permessi di lettura ed
 esecuzione, l'output dovrà essere semplicemente la scritta **L'argomento _d_ non
@@ -33,7 +33,7 @@ descritti, il codice di uscita dev'essere 200, e l'output dovrà essere semplice
 la scritta **L'argomento _b_ non e' valido in quanto _x_** su standard error.
 
 Lo script deve cercare tutti i file che si trovano nel sottoalbero di directory
-radicato in _d_, limitandosi solamente ai le i nomi dei quali contengono una data
+radicato in _d_, limitandosi solamente ai file i nomi dei quali contengono una data
 del tipo AAAAMMGGHHMM (anno, mese, giorno, ora, minuti), e terminano
 con l'estensione **jpg** oppure **txt** (minuscola o maiuscola). La data è sempre
 preceduta e seguita dal carattere \_, che non occorre in nessun altro punto del
