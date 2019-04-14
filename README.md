@@ -1,21 +1,22 @@
 # SO2
-Homework 1 of SO2 - 2019
+## Homework 1 of SO2 - 2019
 
 
-Esercizio 1
+#### Esercizio 1
 Scrivere uno script 1.sh con la seguente sinossi:
-1.sh [opzioni] directory
-dove le opzioni sono le seguenti (si consiglia l'uso del comando bash getopts,
+  **1.sh [opzioni] directory**
+dove le opzioni sono le seguenti (si consiglia l'uso del comando bash **getopts**,
 vedere http://wiki.bash-hackers.org/howto/getopts_tutorial):
- -e
- -b dir (default: vuoto; nel seguito, sia b il valore dato a tale opzione)
+* -e
+* -b dir (default: vuoto; nel seguito, sia b il valore dato a tale opzione)
 L'invocazione dello script e da considerarsi sbagliata nei seguenti casi:
- viene passata un'opzione non esistente (ovvero, non compresa in quelle
+* viene passata un'opzione non esistente (ovvero, non compresa in quelle
 elencate sopra);
- viene passata un'opzione che necessita un argomento, ma senza passare
+* viene passata un'opzione che necessita un argomento, ma senza passare
 l'argomento;
- vengono passate entrambe le opzioni -e e -b;
- non viene passato l'argomento obbligatorio.
+* vengono passate entrambe le opzioni -e e -b;
+* non viene passato l'argomento obbligatorio.
+
 Se si verica uno dei casi di errore appena elencati, l'output dovra consistere
 nella sola riga, su standard error, Uso: s [opzioni] directory, con s nome
 dello script, e lo script dovra terminare con exit status 10.
