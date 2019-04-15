@@ -7,7 +7,7 @@ Scrivere uno script 1.sh con la seguente sinossi:
   **1.sh [opzioni] directory**
 dove le opzioni sono le seguenti (si consiglia l'uso del comando bash **getopts**,
 vedere http://wiki.bash-hackers.org/howto/getopts_tutorial):
-* -e
+* -e (senza directory)
 * -b dir (default: vuoto; nel seguito, sia b il valore dato a tale opzione)
 L'invocazione dello script è da considerarsi sbagliata nei seguenti casi:
 * viene passata un'opzione non esistente (ovvero, non compresa in quelle
