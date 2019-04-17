@@ -41,14 +41,13 @@ while getopts ":b:e" opt; do
         b)
             opt_b=$((opt_b+1))
             # vengono passate entrambe le opzioni -e e -b
-            [ $OPTARG =~ "-e" ] && usage
-            #1 dir=$OPTARG
+            [ $OPTARG == "-e" ] && usage
+            arg=$OPTARG #1
             ;;
         e)
             opt_e=$((opt_e+1))
             # vengono passate entrambe le opzioni -e e -b
-            [ $OPTARG =~ "-b" ] && usage
-            arg=$OPTARG #1 
+            #1 [ $OPTARG == "-b" ] && usage
             #1 TODO: se viene data l'opzione -e ma viene passata solo la directory e non l'argomento allora deve fallire? se si, con quale errore?
             ;;
         \?)
@@ -82,7 +81,25 @@ dir=$1
 
 LC_ALL=C
 #la find stampa con il . ma tu vuoi il nome della cartella iniziale quindi questa e' una pezza: sed 's/^./inp.1/g' ma come individui ogni volta il nome della cartella da sostituire?
-[ $opt_e -eq 1 ] && find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))" | sort | sed 's/^./${dir}/g' | awk -vORS=\| '{ print }' | sed 's/|$/\n/'
+echo $dir
+[ $opt_e -eq 1 ] && files=$(find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))" | sort)
+
+
+# per mettere il separatore pipe, togliere l'ultimo separatore e sostituirlo con accapo
+| awk -vORS=\| '{ print }' | sed 's/|$/\n/'
+
+uniq_dates=$(echo $files | egrep -o "[0-9]{12}" | sort | uniq)
+
+#caso per ogni f appartenente ad F', f è un link simbolico ad un g appartenente a F
+for date in uniq_dates; do
+    E=$(echo $files | grep $date)
+    F=$(realpath -s $E)
+    for f in $F; do
+        # echo *"$(readlink -f $f)"*
+        [[ -L $f && $F == *"$(readlink -f $f)"*  ]] && echo $f #invece di fare echo accumularlo in una variabile F'
+    done
+done
+
 
 # delete only for memo:
 # find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))"
