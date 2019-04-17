@@ -1,6 +1,7 @@
 #!/bin/bash
 
-dir="$1"
+dir=""
+arg=""
 opt_b=0
 opt_e=0
 
@@ -26,22 +27,29 @@ function assure_dir {
     ! [[ -r "$1" && -x "$1" ]] && arg_not_valid $1 "non ha entrambi i permessi di lettura ed esecuzione" $2
 }
 
-#controllo se ha 2 oggetti in input
-! [[ "$#" -eq 1 || "$#" -eq 2 ]] && usage
+#controllo se ha 1 o 2 o 3 oggetti in input:
+#casi possibili: 
+#1) directory;
+#2) -e directory;
+#3) -b argomento directory  
+#(argomento = b e directory = d)
+! [[ "$#" -gt 0 && "$#" -lt 4 ]] && usage #1
 
-while getopts ":b:e:" opt; do
+#TODO: modificare il parametro e non prende argomento ~ #1
+while getopts ":b:e" opt; do
     case $opt in
         b)
             opt_b=$((opt_b+1))
             # vengono passate entrambe le opzioni -e e -b
-            [ $OPTARG == "-e" ] && usage
-            dir=$OPTARG
+            [ $OPTARG =~ "-e" ] && usage
+            #1 dir=$OPTARG
             ;;
         e)
             opt_e=$((opt_e+1))
             # vengono passate entrambe le opzioni -e e -b
-            [ $OPTARG == "-b" ] && usage
-            dir=$OPTARG
+            [ $OPTARG =~ "-b" ] && usage
+            arg=$OPTARG #1 
+            #1 TODO: se viene data l'opzione -e ma viene passata solo la directory e non l'argomento allora deve fallire? se si, con quale errore?
             ;;
         \?)
         # viene passata un'opzione non esistente
@@ -54,19 +62,32 @@ while getopts ":b:e:" opt; do
     esac
 done
 
-# shift "$((OPTIND-1))"
+shift "$((OPTIND-1))" #1
 
 # vengono passate entrambe le opzioni -e e -b # non necessario perchè controllo in precedenza 
 [ $((opt_b+opt_e)) -gt 1 ] && usage
 
+dir=$1
 # non viene passato l'argomento obbligatorio
-[ -z "$1" ] && usage
+#1 [ -z "$1" ] && usage
 [ -z "$dir" ] && usage
 
 ! [ $opt_b -eq 1 ] && assure_dir $dir 100
 
-[ $opt_b -eq 1 ] && [ -d $dir ] && ! [[ -r "$dir" && -w "$dir" && -x "$dir" ]] && arg_not_valid $dir "non ha i diritti corrispondenti all'ottale 7" 200
-[ $opt_b -eq 1 ] && ! [ -e $dir ] && mkdir -p $dir && chmod 700 $dir
+#1  <-- changed $dir to $arg  
+[ $opt_b -eq 1 ] && [ -d $arg ] && ! [[ -r "$arg" && -w "$arg" && -x "$arg" ]] && arg_not_valid $arg "non ha i diritti corrispondenti all'ottale 7" 200
+[ $opt_b -eq 1 ] && ! [ -e $arg ] && mkdir -p $arg && chmod 700 $arg
+
+# logica dello script
+
+LC_ALL=C
+#la find stampa con il . ma tu vuoi il nome della cartella iniziale quindi questa e' una pezza: sed 's/^./inp.1/g' ma come individui ogni volta il nome della cartella da sostituire?
+[ $opt_e -eq 1 ] && find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))" | sort | sed 's/^./${dir}/g' | awk -vORS=\| '{ print }' | sed 's/|$/\n/'
+
+# delete only for memo:
+# find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))"
+# find . | egrep ".*_[0-9]\{12\}_.*\(\.\(txt\|TXT\|jpg|JPG\)\)"
+# find . -regextype grep `**_[0-9]\{12\}_*\.\(txt\|TXT\|jpg\|JPG\)\{1\}`
 
 
 #continuare qui
