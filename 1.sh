@@ -96,7 +96,10 @@ for date in uniq_dates; do
     F=$(realpath -s $E)
     for f in $F; do
         # echo *"$(readlink -f $f)"*
-        [[ -L $f && $F == *"$(readlink -f $f)"*  ]] && echo $f #invece di fare echo accumularlo in una variabile F'
+        [[ -L $f && $F == *"$(readlink -f $f)"* ]] && echo $f #invece di fare echo accumularlo in una variabile F'  
+        # bisogna definire cosa non e' F' quindi devi definire F' sopra e sottrarlo qui sotto   
+        [ "$(stat -c %h -- "$f")" -gt 1 ] && 
+
     done
 done
 
