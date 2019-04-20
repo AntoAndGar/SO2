@@ -86,23 +86,53 @@ echo $dir
 
 
 # per mettere il separatore pipe, togliere l'ultimo separatore e sostituirlo con accapo
-| awk -vORS=\| '{ print }' | sed 's/|$/\n/'
+#| awk -vORS=\| '{ print }' | sed 's/|$/\n/'
 
 uniq_dates=$(echo $files | egrep -o "[0-9]{12}" | sort | uniq)
 
 #caso per ogni f appartenente ad F', f è un link simbolico ad un g appartenente a F
-for date in uniq_dates; do
+for date in $uniq_dates; do
+    echo $date
     E=$(echo $files | grep $date)
-    F=$(realpath -s $E)
+    F=$(realpath -s $E --relative-to=.) #forse un domani andrebbe sostituito con relative-to=$dir
+    F1=""
+    F2=""
     for f in $F; do
         # echo *"$(readlink -f $f)"*
-        [[ -L $f && $F == *"$(readlink -f $f)"* ]] && echo $f #invece di fare echo accumularlo in una variabile F'  
-        # bisogna definire cosa non e' F' quindi devi definire F' sopra e sottrarlo qui sotto   
-        [ "$(stat -c %h -- "$f")" -gt 1 ] && 
-
+        # accumulo in una variabile F1 tutti i link simbolici a un g che sta in F 
+        [[ -L $f && $F == *"$(realpath -s $f --relative-to=.)"* ]] && F1+="$f\n"  #forse un domani andrebbe sostituito con relative-to=$dir
     done
-done
 
+    F1=$(echo -e $F1 | sed 's/\n$/ /')
+
+# bisogna definire cosa non e' F' quindi devi definire F' sopra e sottrarlo qui sotto
+    for f in $F; do 
+        if [[ $F1 == *"$f"* ]]; then 
+            :
+         else 
+            [ "$(stat -c %h -- $f)" -gt 1 ] && F2+="$f\n"
+        fi
+    done
+
+# definisco F''
+    F2=$(echo -e $F2 | sed 's/\n$/ /')
+    F21=""
+    for f in $F2; do 
+        out=$(find $dir -samefile $f | sort | tail -1)
+        F21+="$out\n"
+    done
+
+    F21=$(echo -e $F21 | sed 's/\n$/ /')
+
+# F21 a meno di . iniziali dovrebbe essere F''
+
+
+    #TODO ottimizzare che ci mette i secoli!!!!!!
+
+    #[ "$(stat -c %h -- "$f")" -gt 1 ] && 
+
+    #F2=$(grep -vxFI $F $F1) sbrodola messaggi di bynary files match
+done
 
 # delete only for memo:
 # find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))"
