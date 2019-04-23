@@ -97,6 +97,7 @@ for date in $uniq_dates; do
     F=$(realpath -s $E --relative-to=.) #forse un domani andrebbe sostituito con relative-to=$dir
     F1=""
     F2=""
+    F3=""
     for f in $F; do
         # echo *"$(readlink -f $f)"*
         # accumulo in una variabile F1 tutti i link simbolici a un g che sta in F 
@@ -109,7 +110,7 @@ for date in $uniq_dates; do
     for f in $F; do 
         if [[ $F1 == *"$f"* ]]; then 
             :
-         else 
+        else 
             [ "$(stat -c %h -- $f)" -gt 1 ] && F2+="$f\n"
         fi
     done
@@ -123,21 +124,43 @@ for date in $uniq_dates; do
     done
 
     F21=$(echo -e $F21 | sed 's/\n$/ /')
+    F22=""
+    F22=$(realpath -s $F21 --relative-to=.)
 
-# F21 a meno di . iniziali dovrebbe essere F''
+    for f in $F; do 
+        if [[ $F1 == *"$f"* || $F22 == *"$f"* ]]; then 
+            :
+        else 
+            F3+="$f\n"
+        fi
+    done
 
+    F3=$(echo -e $F3 | sed 's/\n$/ /')
+
+    F31=""
+    for f in $F3; do 
+        for f1 in $F3; do
+            if [[ ! $f == $f1 && $(diff "${f}" "${f1}") ]]; then
+                #echo $f" == "$f1" ??"
+                F31+="$f\n"
+                break
+            fi
+        done
+    done
+
+    F32=$(echo -e $F31 | sort | sed \$d | sed 's/\n$/ /')
 
     #TODO ottimizzare che ci mette i secoli!!!!!!
-
-    #[ "$(stat -c %h -- "$f")" -gt 1 ] && 
-
-    #F2=$(grep -vxFI $F $F1) sbrodola messaggi di bynary files match
 done
+
+output=$(echo -e "$F1\n$F22\n$F32" | sort | awk -vORS=\| '{ inp.1/print }' | sed 's/|$/\n/' | sed 's/^|/\n/')
 
 # delete only for memo:
 # find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))"
 # find . | egrep ".*_[0-9]\{12\}_.*\(\.\(txt\|TXT\|jpg|JPG\)\)"
 # find . -regextype grep `**_[0-9]\{12\}_*\.\(txt\|TXT\|jpg\|JPG\)\{1\}`
+    #[ "$(stat -c %h -- "$f")" -gt 1 ] && 
 
+    #F2=$(grep -vxFI $F $F1) sbrodola messaggi di bynary files match
 
 #continuare qui
