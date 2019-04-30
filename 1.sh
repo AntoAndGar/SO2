@@ -82,7 +82,7 @@ dir=$1
 LC_ALL=C
 #la find stampa con il . ma tu vuoi il nome della cartella iniziale quindi questa e' una pezza: sed 's/^./inp.1/g' ma come individui ogni volta il nome della cartella da sostituire?
 echo $dir
-[ $opt_e -eq 1 ] && files=$(find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))" | sort)
+files=$(find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))" | sort)
 
 
 # per mettere il separatore pipe, togliere l'ultimo separatore e sostituirlo con accapo
@@ -90,42 +90,49 @@ echo $dir
 
 uniq_dates=$(echo $files | egrep -o "[0-9]{12}" | sort | uniq)
 
+F1=""
 #caso per ogni f appartenente ad F', f è un link simbolico ad un g appartenente a F
 for date in $uniq_dates; do
     echo $date
-    E=$(echo $files | grep $date)
+    E=$(echo -e $files | tr " " "\n" | grep $date)
     F=$(realpath -s $E --relative-to=.) #forse un domani andrebbe sostituito con relative-to=$dir
-    F1=""
-    F2=""
-    F3=""
+
     for f in $F; do
         # echo *"$(readlink -f $f)"*
         # accumulo in una variabile F1 tutti i link simbolici a un g che sta in F 
-        [[ -L $f && $F == *"$(realpath -s $f --relative-to=.)"* ]] && F1+="$f\n"  #forse un domani andrebbe sostituito con relative-to=$dir
+        [[ -L $f && $F == *"$(realpath $f --relative-to=.)"* ]] && echo "$f ---> $(realpath $f --relative-to=.)" && F1+="$f\n"  #forse un domani andrebbe sostituito con relative-to=$dir
+        #[[ -L $f && $(readlink $f) == *"$data"* ]] && echo "$f ---> $(readlink $f)" && F1+="$f\n"  #forse un domani andrebbe sostituito con relative-to=$dir
     done
+done
 
-    F1=$(echo -e $F1 | sed 's/\n$/ /')
+F1=$(echo -e $F1 | sed 's/\n$/ /')
 
+F2=""
+F3=""
+for date in $uniq_dates; do
+    echo $date
+    E=$(echo -e $files | tr " " "\n" | grep $date)
+    F=$(realpath -s $E --relative-to=.) #forse un domani andrebbe sostituito con relative-to=$dir
+
+    out=""
 # bisogna definire cosa non e' F' quindi devi definire F' sopra e sottrarlo qui sotto
     for f in $F; do 
         if [[ $F1 == *"$f"* ]]; then 
             :
         else 
-            [ "$(stat -c %h -- $f)" -gt 1 ] && F2+="$f\n"
+            [[ "$(stat -c %h -- $f)" -gt 1 && $(find $dir -samefile $f | egrep -o "[0-9]{12}" | sort | uniq | wc -l) -eq 1 ]] && out=$(find $dir -samefile $f | sort | tail -1) && echo $out 
         fi
     done
+        if [[ $out == *$date* && $(find $dir -samefile $f | egrep -o "[0-9]{12}" | sort | uniq | wc -l) -eq 1 ]]; then 
+            echo "test: "$(find $dir -samefile $f)
+            echo "out: "$out
+            F2+="$out\n"
+        fi
+done
+F2=$(echo -e $F2 | sort | uniq) # | sed 's/\n$/ /')
+F21=$(realpath -s $F2 --relative-to=.)
 
-# definisco F''
-    F2=$(echo -e $F2 | sed 's/\n$/ /')
-    F21=""
-    for f in $F2; do 
-        out=$(find $dir -samefile $f | sort | tail -1)
-        F21+="$out\n"
-    done
-
-    F21=$(echo -e $F21 | sed 's/\n$/ /')
-    F22=""
-    F22=$(realpath -s $F21 --relative-to=.)
+#TODO: rifare tutto questo
 
     for f in $F; do 
         if [[ $F1 == *"$f"* || $F22 == *"$f"* ]]; then 
@@ -153,7 +160,8 @@ for date in $uniq_dates; do
     #TODO ottimizzare che ci mette i secoli!!!!!!
 done
 
-output=$(echo -e "$F1\n$F22\n$F32" | sort | awk -vORS=\| '{ inp.1/print }' | sed 's/|$/\n/' | sed 's/^|/\n/')
+#[ $opt_e -eq 1 ] &&
+output=$(echo -e "$F1\n$F22\n$F32" | sed '/^\s*$/d' | awk -vORS=\| '{ print "inp.1/"$0 }' | sed 's/|$/\n/')
 
 # delete only for memo:
 # find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))"
