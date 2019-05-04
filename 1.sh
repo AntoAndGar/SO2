@@ -160,25 +160,28 @@ F34=""
 for date in $uniq_dates; do
     FX=$(echo -e $F3 | tr " " "\n" | grep $date)
     FY=$(realpath -s $FX --relative-to=.)
-    F31=""
-    F32=""
     for f in $FY; do
+        F31=""
+        F32=""
         for f1 in $FY; do
             #echo $f" == "$f1" ??"
             if [[ ! -h $f && $f != $f1 && ! $(cmp $f $f1) ]]; then #&& $(diff "${f}" "${f1}") ]]; then
-                #! -L $f && ! -L $f1 &&
                 #echo $f" == "$f1" ??"
-                F31+="$f\n"
-                break
+                F31+="$f\n$f1\n"
             fi
             #echo $F31
         done
+        F32+=$(echo -e $F31 | tr " " "\n" | LC_ALL=C  sort | uniq) # sed \$d )
+        #echo "pre: "$F32
+        num=$(($(echo -e $F32 | tr " " "\n" | sed '/^[[:space:]]*$/d' | wc -l )-1))
+        F33+=$(echo -e $F32 | tr " " "\n" | sed \$d )"\n"
+        #echo "post: "$F33
     done
-    F32+=$(echo -e $F31 | tr " " "\n" | LC_ALL=C  sort ) # sed \$d )
-    echo "pre: "$F32
-    num=$(($(echo -e $F32 | tr " " "\n" | wc -l )-1))
-    F33+=$(echo -e $F32 | tr " " "\n" | sed \$d )"\n" #| head -$num )"\n"
-    echo "post: "$F33
+    #F32+=$(echo -e $F31 | tr " " "\n" | LC_ALL=C  sort ) # sed \$d )
+    #echo "pre: "$F32
+    #num=$(($(echo -e $F32 | tr " " "\n" | wc -l )-1))
+    #F33+=$(echo -e $F32 | tr " " "\n" | sed \$d )"\n" #| head -$num )"\n"
+    #echo "post: "$F33
     #F32=$(echo -e  $F31 | sort ) # | head -$($(echo -e $F31 | tr " " "\n" | wc -l) -1) ) #sed \$d )
     #num=$(($(echo -e $F32 | tr " " "\n" | wc -l )-1))
     #F33+=$(echo -e $F32 | tr " " "\n" | head -$num )
@@ -187,7 +190,8 @@ done
 
 F34=$(echo -e $F33 | tr " " "\n" | LC_ALL=C sort | uniq)
 
-output=$(echo -e "$F1\n$F21\n$F34" | tr " " "\n" | LC_ALL=C sort | sed '/^\s*$/d' | awk -vORS=\| '{ print "inp.1/"$0 }' | sed 's/|$/\n/')
+output=""
+output=$(echo -e "$F1\n$F21\n$F34" | tr " " "\n" | LC_ALL=C sort | sed '/^\s*$/d' | awk -vORS=\| -v dir="$dir" '{ print $0 }' | sed 's/|$/\n/')
 echo $output
 
 #
