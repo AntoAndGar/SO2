@@ -81,8 +81,8 @@ dir=$1
 
 LC_ALL=C
 #la find stampa con il . ma tu vuoi il nome della cartella iniziale quindi questa e' una pezza: sed 's/^./inp.1/g' ma come individui ogni volta il nome della cartella da sostituire?
-echo $dir
-files=$(find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))" | sort)
+#echo $dir
+files=$(find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))" | LC_ALL=C sort)
 
 
 # per mettere il separatore pipe, togliere l'ultimo separatore e sostituirlo con accapo
@@ -93,14 +93,15 @@ uniq_dates=$(echo $files | egrep -o "[0-9]{12}" | sort | uniq)
 F1=""
 #caso per ogni f appartenente ad F', f è un link simbolico ad un g appartenente a F
 for date in $uniq_dates; do
-    echo $date
+    #echo $date
     E=$(echo -e $files | tr " " "\n" | grep $date)
     F=$(realpath -s $E --relative-to=.) #forse un domani andrebbe sostituito con relative-to=$dir
 
     for f in $F; do
         # echo *"$(readlink -f $f)"*
         # accumulo in una variabile F1 tutti i link simbolici a un g che sta in F 
-        [[ -L $f && $F == *"$(realpath $f --relative-to=.)"* ]] && echo "$f ---> $(realpath $f --relative-to=.)" && F1+="$f\n"  #forse un domani andrebbe sostituito con relative-to=$dir
+        # && echo "$f ---> $(realpath $f --relative-to=.)" 
+        [[ -L $f && $F == *"$(realpath $f --relative-to=.)"* ]] && F1+="$f\n"  #forse un domani andrebbe sostituito con relative-to=$dir
         #[[ -L $f && $(readlink $f) == *"$data"* ]] && echo "$f ---> $(readlink $f)" && F1+="$f\n"  #forse un domani andrebbe sostituito con relative-to=$dir
     done
 done
@@ -108,9 +109,8 @@ done
 F1=$(echo -e $F1 | sed 's/\n$/ /')
 
 F2=""
-F3=""
 for date in $uniq_dates; do
-    echo $date
+    #echo $date
     E=$(echo -e $files | tr " " "\n" | grep $date)
     F=$(realpath -s $E --relative-to=.) #forse un domani andrebbe sostituito con relative-to=$dir
 
@@ -120,55 +120,106 @@ for date in $uniq_dates; do
         if [[ $F1 == *"$f"* ]]; then 
             :
         else 
-            [[ "$(stat -c %h -- $f)" -gt 1 && $(find $dir -samefile $f | egrep -o "[0-9]{12}" | sort | uniq | wc -l) -eq 1 ]] && out=$(find $dir -samefile $f | sort | tail -1) && echo $out 
+        ##### TODO: STAI PERDENDO I FILE CHE HANNO PIU HARD LINK DI CUI DUE HANNO LA STESSA DATA!!!!
+            [ "$(stat -c %h -- $f)" -gt 1 ] && out=$(find $dir -samefile $f | LC_ALL=C sort | grep $date ) && [ $(echo -e $out | tr " " "\n" | wc -l) -gt 1 ] && out=$(echo -e $out | tr " " "\n" | tail -1) && [[ $out == *"$date"* ]] && F2+="$out\n"  # && echo $out  #&& $(find $dir -samefile $f | egrep -o "[0-9]{12}" | LC_ALL=C sort | uniq | wc -l) -eq 1 ]]  
         fi
     done
-        if [[ $out == *$date* && $(find $dir -samefile $f | egrep -o "[0-9]{12}" | sort | uniq | wc -l) -eq 1 ]]; then 
-            echo "test: "$(find $dir -samefile $f)
-            echo "out: "$out
-            F2+="$out\n"
-        fi
+    #$out == *"$date"* && 
+    #if [[ out == *"$date"* ]]; then # && $(find $dir -samefile $f | egrep -o "[0-9]{12}" | LC_ALL=C sort | uniq | wc -l) -eq 1 ]]; then 
+    #    # echo "test: "$(find $dir -samefile $f)
+    #    # echo "out: "$out
+    #    F2+="$out\n"
+    #fi
 done
-F2=$(echo -e $F2 | sort | uniq) # | sed 's/\n$/ /')
+F2=$(echo -e $F2 | LC_ALL=C sort | uniq) # | sed 's/\n$/ /')
 F21=$(realpath -s $F2 --relative-to=.)
 
 #TODO: rifare tutto questo
+F3=""
+for date in $uniq_dates; do
+    #echo $date
+    E=$(echo -e $files | tr " " "\n" | grep $date)
+    F=$(realpath -s $E --relative-to=.) #forse un domani andrebbe sostituito con relative-to=$dir
 
     for f in $F; do 
-        if [[ $F1 == *"$f"* || $F22 == *"$f"* ]]; then 
+        if [[ $F1 == *"$f"* || $F21 == *"$f"* ]]; then 
             :
         else 
             F3+="$f\n"
         fi
     done
+done
 
-    F3=$(echo -e $F3 | sed 's/\n$/ /')
+F3=$(echo -e $F3 | sed 's/\n$/ /')
 
+F32=""
+F33=""
+FX=""
+FY=""
+F34=""
+for date in $uniq_dates; do
+    FX=$(echo -e $F3 | tr " " "\n" | grep $date)
+    FY=$(realpath -s $FX --relative-to=.)
     F31=""
-    for f in $F3; do 
-        for f1 in $F3; do
-            if [[ ! $f == $f1 && $(diff "${f}" "${f1}") ]]; then
+    F32=""
+    for f in $FY; do
+        for f1 in $FY; do
+            #echo $f" == "$f1" ??"
+            if [[ ! -h $f && $f != $f1 && ! $(cmp $f $f1) ]]; then #&& $(diff "${f}" "${f1}") ]]; then
+                #! -L $f && ! -L $f1 &&
                 #echo $f" == "$f1" ??"
                 F31+="$f\n"
                 break
             fi
+            #echo $F31
         done
     done
-
-    F32=$(echo -e $F31 | sort | sed \$d | sed 's/\n$/ /')
-
-    #TODO ottimizzare che ci mette i secoli!!!!!!
+    F32+=$(echo -e $F31 | tr " " "\n" | LC_ALL=C  sort ) # sed \$d )
+    echo "pre: "$F32
+    num=$(($(echo -e $F32 | tr " " "\n" | wc -l )-1))
+    F33+=$(echo -e $F32 | tr " " "\n" | sed \$d )"\n" #| head -$num )"\n"
+    echo "post: "$F33
+    #F32=$(echo -e  $F31 | sort ) # | head -$($(echo -e $F31 | tr " " "\n" | wc -l) -1) ) #sed \$d )
+    #num=$(($(echo -e $F32 | tr " " "\n" | wc -l )-1))
+    #F33+=$(echo -e $F32 | tr " " "\n" | head -$num )
+     #| sed \$d | sed 's/\n$/ /')
 done
 
-#[ $opt_e -eq 1 ] &&
-output=$(echo -e "$F1\n$F22\n$F32" | sed '/^\s*$/d' | awk -vORS=\| '{ print "inp.1/"$0 }' | sed 's/|$/\n/')
+F34=$(echo -e $F33 | tr " " "\n" | LC_ALL=C sort | uniq)
 
-# delete only for memo:
-# find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))"
-# find . | egrep ".*_[0-9]\{12\}_.*\(\.\(txt\|TXT\|jpg|JPG\)\)"
-# find . -regextype grep `**_[0-9]\{12\}_*\.\(txt\|TXT\|jpg\|JPG\)\{1\}`
-    #[ "$(stat -c %h -- "$f")" -gt 1 ] && 
+output=$(echo -e "$F1\n$F21\n$F34" | tr " " "\n" | LC_ALL=C sort | sed '/^\s*$/d' | awk -vORS=\| '{ print "inp.1/"$0 }' | sed 's/|$/\n/')
+echo $output
 
-    #F2=$(grep -vxFI $F $F1) sbrodola messaggi di bynary files match
-
-#continuare qui
+#
+#F31=""
+#F32=""
+#F33=""
+#for f in $F3; do 
+#    for f1 in $F3; do
+#        if [[ ! "$f" == "$f1" && $(echo $f | egrep -o "[0-9]{12}") == $(echo $f1 | egrep -o "[0-9]{12}") && ! $(diff "${f}" "${f1}") ]]; then
+#            #echo $f" == "$f1" ??"
+#            F31+="$f1\n"
+#        fi
+#        #echo $F31
+#    done
+#    F32=$(echo -e  $F31 | tr " " "\n" | sort | sed \$d ) #| sed \$d | sed 's/\n$/ /')
+#    #echo $F32
+#done
+#
+#F33=$(echo -e $F32 | tr " " "\n" | sort | uniq)
+#
+##TODO ottimizzare che ci mette i secoli!!!!!!
+#
+##[ $opt_e -eq 1 ] &&
+#output=$(echo -e "$F1\n$F22\n$F32" | sed '/^\s*$/d' | awk -vORS=\| '{ print "inp.1/"$0 }' | sed 's/|$/\n/')
+#
+## delete only for memo:
+## find $dir | egrep ".*_[0-9]{12}_.*(\.(txt|TXT|jpg|JPG))"
+## find . | egrep ".*_[0-9]\{12\}_.*\(\.\(txt\|TXT\|jpg|JPG\)\)"
+## find . -regextype grep `**_[0-9]\{12\}_*\.\(txt\|TXT\|jpg\|JPG\)\{1\}`
+#    #[ "$(stat -c %h -- "$f")" -gt 1 ] && 
+#
+#    #F2=$(grep -vxFI $F $F1) sbrodola messaggi di bynary files match
+#
+##continuare qui
+#
