@@ -21,10 +21,10 @@ function arg_not_valid {
 function assure_dir {
     #$1 file to check $2 error to raise
     ! [ -e "$1" ] && arg_not_valid $1 "non esiste" $2
-    [ -f "$1" ] && arg_not_valid $1 "e' un file regolare e non una directory" $2
+    [ -f "$1" ] && arg_not_valid $1 "non e' una directory" $2
     #! [ -d "$1" ] && arg_not_valid $1 "non e' una directory" $error #verificare se va o meno messo
     #verificare i permessi
-    ! [[ -r "$1" && -x "$1" ]] && arg_not_valid $1 "non ha entrambi i permessi di lettura ed esecuzione" $2
+    ! [[ -r "$1" && -x "$1" ]] && arg_not_valid $1 "non ha i permessi richiesti" $2
 }
 
 #controllo se ha 1 o 2 o 3 oggetti in input:
@@ -74,7 +74,7 @@ dir=$1
 ! [ $opt_b -eq 1 ] && assure_dir $dir 100
 
 #1  <-- changed $dir to $arg  
-[ $opt_b -eq 1 ] && [ -d $arg ] && ! [[ -r "$arg" && -w "$arg" && -x "$arg" ]] && arg_not_valid $arg "non ha i diritti corrispondenti all'ottale 7" 200
+[ $opt_b -eq 1 ] && [ -d $arg ] && ! [[ -r "$arg" && -w "$arg" && -x "$arg" ]] && arg_not_valid $arg "non ha i permessi richiesti" 200
 [ $opt_b -eq 1 ] && ! [ -e $arg ] && mkdir -p $arg && chmod 700 $arg
 
 # logica dello script
@@ -190,9 +190,27 @@ done
 
 F34=$(echo -e $F33 | tr " " "\n" | LC_ALL=C sort | uniq)
 
+#stampo sempre i file in output secondo la sintassi descritta
 output=""
 output=$(echo -e "$F1\n$F21\n$F34" | tr " " "\n" | LC_ALL=C sort | sed '/^\s*$/d' | awk -vORS=\| -v dir="$dir" '{ print $0 }' | sed 's/|$/\n/')
 echo $output
+
+#effettuo le cose che vanno fatte in base all' opzione in input
+files_out=$(echo -e "$F1\n$F21\n$F34" | tr " " "\n" | LC_ALL=C sort | sed '/^\s*$/d')
+if [ $opt_e -eq 1 ]; then
+    :
+elif [ $opt_b -eq 1 ]; then
+    for f in $files_out; do
+        mkdir -p "$arg/"$(echo $(dirname "$f") | sed 's,^[^/]*/,,') && mv $f "$arg/"$(echo $f | sed 's,^[^/]*/,,')
+    done
+    find -L $arg -type l | xargs rm
+elif [[ $opt_e -eq 0 && $opt_b -eq 0 ]]; then
+    rm -rf $files_out
+fi
+
+find -L $dir -type l | xargs rm
+
+exit 0
 
 #
 #F31=""
