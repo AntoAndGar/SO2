@@ -1,7 +1,7 @@
 CC=gcc
 
-1: prova.c util.h utf.h
-	$(CC) $^ -o $@
+2: prova2.c #util.h utf.h #-ggdb
+	$(CC) prova2.c -o $@
 
 .PHONY: clean
 clean:
