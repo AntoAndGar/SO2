@@ -26,6 +26,148 @@ int Rflag = 0;
 int lvalue = 0;
 int opterr = 0;
 
+void
+resolve_link(struct stat mystat, char *path) {
+    if(lflag) {
+        if(S_ISLNK(mystat.st_mode)) {
+            char linkname[1024];
+            ssize_t r;
+
+            if ((r = readlink(path, linkname, sizeof(linkname)-1)) != -1);
+            linkname[r] = '\0';
+            printf(" -> %s", linkname);
+        }
+    }
+}
+
+void 
+permission(struct stat mystat) {
+    if(lflag) {
+        if(S_ISREG(mystat.st_mode)) printf( "-" );
+        else if (S_ISDIR(mystat.st_mode)) printf( "d" );
+        else if (S_ISFIFO(mystat.st_mode)) printf( "|" );
+        else if (S_ISSOCK(mystat.st_mode)) printf( "s" );
+        else if (S_ISCHR(mystat.st_mode)) printf( "c" );
+        else if (S_ISBLK(mystat.st_mode)) printf( "b" );
+        else printf( "l" );
+        printf( (mystat.st_mode & S_IRUSR) ? "r" : "-");
+        printf( (mystat.st_mode & S_IWUSR) ? "w" : "-");
+        switch (mystat.st_mode & (S_IXUSR | S_ISUID)) {
+            case 0:
+                printf("-");
+                break;
+            case S_IXUSR:
+                printf("x");
+                break;
+            case S_ISUID:
+                printf("S");
+                break;
+            case S_IXUSR | S_ISUID:
+                printf("s");
+                break;
+        }
+        printf( (mystat.st_mode & S_IRGRP) ? "r" : "-");
+        printf( (mystat.st_mode & S_IWGRP) ? "w" : "-");
+        switch (mystat.st_mode & (S_IXGRP | S_ISGID)) {
+            case 0:
+                printf("-");
+                break;
+            case S_IXGRP:
+                printf("x");
+                break;
+            case S_ISGID:
+                printf("S");
+                break;
+            case S_IXGRP | S_ISGID:
+                printf("s");
+                break;
+        }
+        printf( (mystat.st_mode & S_IROTH) ? "r" : "-");
+        printf( (mystat.st_mode & S_IWOTH) ? "w" : "-");
+        switch (mystat.st_mode & (S_IXOTH | S_ISVTX)) {
+            case 0:
+                printf("-");
+                break;
+            case S_IXOTH:
+                printf("x");
+                break;
+            case S_ISVTX:
+                printf("T");
+                break;
+            case S_IXOTH | S_ISVTX:
+                printf("t");
+                break;
+        }
+
+        if(lvalue == 0) {
+            printf("\t%ld", mystat.st_nlink);
+            printf("\t%zu", mystat.st_size);
+        }
+        printf("\t");
+    }
+}
+
+void RecDir(char * path, int flag) {
+    int numOfFiles;
+    struct dirent **mydirectory;
+    struct stat mystat;
+    int total=0;
+    numOfFiles = scandir(path, &mydirectory, 0, alphasort);
+
+    if (numOfFiles < 0){
+        //fprintf(stderr, "System call scandir failed because of %e\n", error);
+        exit(100);
+    }
+
+    lstat(path, &mystat);
+
+    char newdir[512];
+    printf("%s:\n", path);
+
+    if(lflag) {
+        for(int i=0; i<numOfFiles; i++) {
+            if (mydirectory[i]->d_name[0] != '.' && !(mydirectory[i]->d_type == 10)) {
+                //lstat(mydirectory[i]->d_name, &myblock);
+                total += mystat.st_blocks;
+            }
+        }
+        printf("total %d\n", total/2);
+    }
+
+    for(int j=0; j < numOfFiles; j++) {
+        char buf[PATH_MAX + 1]="";
+        struct stat myblock;
+        if (mydirectory[j]->d_name[0] != '.') {
+                //sprintf(buf, "%s/%s", argv[argc-1], mydirectory->d_name);
+            strcat(buf, path);
+            strcat(buf, "/");
+            strcat(buf, mydirectory[j]->d_name);
+            if (lstat(buf, &myblock) < 0)
+                printf("stat error\n");
+
+            permission(myblock);
+
+            printf("%s", mydirectory[j]->d_name);
+            
+            resolve_link(myblock, buf);
+
+            printf("\n");
+
+        }
+    }
+
+    for(int j=0; j < numOfFiles; j++) {
+        if (mydirectory[j]->d_name[0] != '.') {
+            if(flag && mydirectory[j]->d_type == 4) {
+                sprintf(newdir, "%s/%s", path, mydirectory[j]->d_name);
+                printf("\n");
+                RecDir(newdir, 1);
+            }
+        }
+    }
+}
+
+
 void 
 ls(int optind, int argc, char* argv[], int file) {
     for(int i = optind; i < argc; i++) {
@@ -33,138 +175,85 @@ ls(int optind, int argc, char* argv[], int file) {
         struct stat mystat;
 
         if (lstat(argv[i], &mystat) == 0 && S_ISDIR(mystat.st_mode)) {
-            if (file > 0) {
+            if (file > 0 && !dflag) {
                 printf("\n");
             }
-            if (file > 0 || Rflag) {
-                printf("%s:\n", argv[i]);
-            }
 
-            int total=0;
-            int blocksize = 0;
-            //struct dirent **directory;
-            int numOfFiles;
-
-            //setlocale(LC_ALL, "C");
-
-            if(getenv("BLOCKSIZE") == NULL) {
-                blocksize = 1024;
-            }
-            else {
-                blocksize = atoi(getenv("BLOCKSIZE"));
-            }
-
-            numOfFiles = scandir(argv[i], &mydirectory, 0, alphasort);
-            //printf("%d", numOfFiles);
-            if (numOfFiles < 0){
-                //fprintf(stderr, "System call scandir failed because of %e\n", error);
-                exit(100);
-            }
-
-            if(lflag) {
-                for(int i=0; i<numOfFiles; i++) {
-                    if (mydirectory[i]->d_name[0] != '.') {
-                        //lstat(mydirectory[i]->d_name, &myblock);
-                        total += mystat.st_blocks;
-                    }
+            if(dflag && file == 0){
+                if(lflag){
+                    permission(mystat);
                 }
-            printf("total %d\n", total/2);
+                printf("%s\n", argv[i]);
             }
+
+            if (!Rflag){
+                if ((file > 0 || Rflag) && !dflag) {
+                    printf("%s:\n", argv[i]);
+                }
+
+                int total=0;
+                int blocksize = 0;
+                //struct dirent **directory;
+                int numOfFiles;
+
+                //setlocale(LC_ALL, "C");
+
+                if(getenv("BLOCKSIZE") == NULL) {
+                    blocksize = 1024;
+                }
+                else {
+                    blocksize = atoi(getenv("BLOCKSIZE"));
+                }
+
+                if (!dflag){
+                    numOfFiles = scandir(argv[i], &mydirectory, 0, alphasort);
+                    //printf("%d", numOfFiles);
+                    if (numOfFiles < 0){
+                        //fprintf(stderr, "System call scandir failed because of %e\n", error);
+                        exit(100);
+                    }
+
+                    if(lflag) {
+                        for(int i=0; i<numOfFiles; i++) {
+                            if (mydirectory[i]->d_name[0] != '.') {
+                                //lstat(mydirectory[i]->d_name, &myblock);
+                                total += mystat.st_blocks;
+                            }
+                        }
+                        printf("total %d\n", total/2);
+                    }
+
+                }
 
             //rewinddir(mydir);
 
-            for(int j=0; j<numOfFiles; j++) {
-                char buf[PATH_MAX + 1]="";
-                struct stat myblock;
-                if (mydirectory[j]->d_name[0] != '.') {
-                        //sprintf(buf, "%s/%s", argv[argc-1], mydirectory->d_name);
-                    strcat(buf, argv[i]);
-                    strcat(buf, "/");
-                    strcat(buf, mydirectory[j]->d_name);
-                    if (lstat(buf, &myblock) < 0)
-                        printf("stat error1\n");
+                for(int j=0; j < numOfFiles; j++) {
+                    char buf[PATH_MAX + 1]="";
+                    struct stat myblock;
+                    if (mydirectory[j]->d_name[0] != '.') {
+                            //sprintf(buf, "%s/%s", argv[argc-1], mydirectory->d_name);
+                        strcat(buf, argv[i]);
+                        strcat(buf, "/");
+                        strcat(buf, mydirectory[j]->d_name);
+                        if (lstat(buf, &myblock) < 0)
+                            printf("stat error\n");
 
-                    if(lflag) {
-                        if(S_ISREG(myblock.st_mode)) printf( "-" );
-                        else if (S_ISDIR(myblock.st_mode)) printf( "d" );
-                        else if (S_ISFIFO(myblock.st_mode)) printf( "|" );
-                        else if (S_ISSOCK(myblock.st_mode)) printf( "s" );
-                        else if (S_ISCHR(myblock.st_mode)) printf( "c" );
-                        else if (S_ISBLK(myblock.st_mode)) printf( "b" );
-                        else printf( "l" );
-                        printf( (myblock.st_mode & S_IRUSR) ? "r" : "-");
-                        printf( (myblock.st_mode & S_IWUSR) ? "w" : "-");
-                        switch (myblock.st_mode & (S_IXUSR | S_ISUID)) {
-                            case 0:
-                                printf("-");
-                                break;
-                            case S_IXUSR:
-                                printf("x");
-                                break;
-                            case S_ISUID:
-                                printf("S");
-                                break;
-                            case S_IXUSR | S_ISUID:
-                                printf("s");
-                                break;
-                        }
-                        printf( (myblock.st_mode & S_IRGRP) ? "r" : "-");
-                        printf( (myblock.st_mode & S_IWGRP) ? "w" : "-");
-                        switch (myblock.st_mode & (S_IXGRP | S_ISGID)) {
-                            case 0:
-                                printf("-");
-                                break;
-                            case S_IXGRP:
-                                printf("x");
-                                break;
-                            case S_ISGID:
-                                printf("S");
-                                break;
-                            case S_IXGRP | S_ISGID:
-                                printf("s");
-                                break;
-                        }
-                        printf( (myblock.st_mode & S_IROTH) ? "r" : "-");
-                        printf( (myblock.st_mode & S_IWOTH) ? "w" : "-");
-                        switch (myblock.st_mode & (S_IXOTH | S_ISVTX)) {
-                            case 0:
-                                printf("-");
-                                break;
-                            case S_IXOTH:
-                                printf("x");
-                                break;
-                            case S_ISVTX:
-                                printf("T");
-                                break;
-                            case S_IXOTH | S_ISVTX:
-                                printf("t");
-                                break;
-                        }
+                        permission(myblock);
 
-                        if(lvalue == 0) {
-                            printf("\t%ld", myblock.st_nlink);
-                            printf("\t%zu", myblock.st_size);
-                        }
-                        printf("\t");
-                        }
                         printf("%s", mydirectory[j]->d_name);
-                        if(lflag) {
-                            if(S_ISLNK(myblock.st_mode)) {
-                                char linkname[1024];
-                                ssize_t r;
+                        
+                        resolve_link(myblock, mydirectory[j]->d_name);
 
-                                if ((r = readlink(mydirectory[j]->d_name, linkname, sizeof(linkname)-1)) != -1);
-                                linkname[r] = '\0';
-                                printf(" -> %s", linkname);
-                            }
-                        }
                         printf("\n");
 
-                    if (Rflag && S_ISDIR(myblock.st_mode) && !dflag) {
-                        
                     }
                 }
             }
+
+            if (Rflag && S_ISDIR(mystat.st_mode) && !dflag) {
+                RecDir(argv[i], 1);
+            }
+
             free(mydirectory);
         }
         //free(mydirectory);
@@ -185,11 +274,12 @@ main(int argc, char* argv[])
 
     while ((c = getopt (argc, argv, "dRl:")) != -1) {
         switch (c) {
-            case 'd':
-                dflag = 1;
-                break;
             case 'R':
                 Rflag = 1;
+                break;
+            case 'd':
+                dflag = 1;
+                Rflag = 0;
                 break;
             case 'l':
                 lflag = 1;
@@ -238,114 +328,16 @@ main(int argc, char* argv[])
     for(int i = optind; i < argc; i++){
         //printf("%s\n", argv[i]);
         struct stat sb;
-        if( (access(argv[i], F_OK) != -1) && (lstat(argv[i], &sb) == 0 && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode))) ) {
+        if( (access(argv[i], F_OK) != -1 || dflag  ) && (lstat(argv[i], &sb) == 0 && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode) || dflag ))) {
             // file exists and is a file
             file++;
-            if(lflag) {
-                if(S_ISREG(sb.st_mode)) printf( "-" );
-                else if (S_ISDIR(sb.st_mode)) printf( "d" );
-                else if (S_ISFIFO(sb.st_mode)) printf( "|" );
-                else if (S_ISSOCK(sb.st_mode)) printf( "s" );
-                else if (S_ISCHR(sb.st_mode)) printf( "c" );
-                else if (S_ISBLK(sb.st_mode)) printf( "b" );
-                else printf( "l" );
-                printf( (sb.st_mode & S_IRUSR) ? "r" : "-");
-                printf( (sb.st_mode & S_IWUSR) ? "w" : "-");
-                //if (sb.st_mode & S_IXUSR){
-                //    if (S_ISUID)
-                //        printf("s");
-                //    else
-                //        printf( "x" );
-                //}
-                //else {
-                //    if (S_ISUID)
-                //        printf("S");
-                //    else
-                //        printf( "-" );
-                //}
-                switch (sb.st_mode & (S_IXUSR | S_ISUID)) {
-                    case 0:
-                        printf("-");
-                        break;
-                    case S_IXUSR:
-                        printf("x");
-                        break;
-                    case S_ISUID:
-                        printf("S");
-                        break;
-                    case S_IXUSR | S_ISUID:
-                        printf("s");
-                        break;
-                }
-                //printf( (sb.st_mode & S_IXUSR) ? "x" : "-");
-                printf( (sb.st_mode & S_IRGRP) ? "r" : "-");
-                printf( (sb.st_mode & S_IWGRP) ? "w" : "-");
-                //if (sb.st_mode & S_ISGID & S_IXUSR)
-                //    printf( "s" );
-                //else if (sb.st_mode & S_ISGID & !S_IXUSR)
-                //    printf( "S" );
-                //else if (sb.st_mode & !S_ISGID & S_IXUSR)
-                //    printf( "x" );
-                //else 
-                //    printf( "-" );
-                switch (sb.st_mode & (S_IXGRP | S_ISGID)) {
-                    case 0:
-                        printf("-");
-                        break;
-                    case S_IXGRP:
-                        printf("x");
-                        break;
-                    case S_ISGID:
-                        printf("S");
-                        break;
-                    case S_IXGRP | S_ISGID:
-                        printf("s");
-                        break;
-                }
-                //printf( (sb.st_mode & S_IXGRP) ? "x" : "-");
-                printf( (sb.st_mode & S_IROTH) ? "r" : "-");
-                printf( (sb.st_mode & S_IWOTH) ? "w" : "-");
-                //if (sb.st_mode & S_ISVTX & S_IXUSR)
-                //    printf( "t" );
-                //else if (sb.st_mode & S_ISVTX & !S_IXUSR)
-                //    printf( "T" );
-                //else if (sb.st_mode & !S_ISVTX & S_IXUSR)
-                //    printf( "x" );
-                //else 
-                //    printf( "-" );
-                switch (sb.st_mode & (S_IXOTH | S_ISVTX)) {
-                    case 0:
-                        printf("-");
-                        break;
-                    case S_IXOTH:
-                        printf("x");
-                        break;
-                    case S_ISVTX:
-                        printf("T");
-                        break;
-                    case S_IXOTH | S_ISVTX:
-                        printf("t");
-                        break;
-                }
-                //printf( (sb.st_mode & S_IXOTH) ? "x" : "-");
+            
+            permission(sb);
 
-                if(lvalue == 0) {
-                    printf("\t%ld", sb.st_nlink);
-                    printf("\t%zu", sb.st_size);
-                }
-                printf("\t");
-            }
             printf("%s", argv[i]);
-            if(lflag) {
-                if(S_ISLNK(sb.st_mode)) {
-                    char linkname[1024];
-                    ssize_t r;
+            
+            resolve_link(sb, argv[i]);
 
-                    if ((r = readlink(argv[i], linkname, sizeof(linkname)-1)) != -1);
-                    linkname[r] = '\0';
-                    printf(" -> %s", linkname);
-                }
-            }
             printf("\n");
         }
     }
