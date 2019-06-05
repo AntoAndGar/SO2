@@ -5,4 +5,4 @@ CC=gcc
 
 .PHONY: clean
 clean:
-	rm -f *.o
+	rm -f *.o [1-3]

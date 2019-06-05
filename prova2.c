@@ -108,13 +108,13 @@ permission(struct stat mystat) {
 }
 
 void RecDir(char * path, int flag) {
-    int numOfFiles;
-    struct dirent **mydirectory;
+    int numOfFiles = 0;
+    struct dirent **mydirectory = NULL;
     struct stat mystat;
     int total=0;
     numOfFiles = scandir(path, &mydirectory, 0, alphasort);
 
-    if (numOfFiles < 0){
+    if (numOfFiles < 0) {
         //fprintf(stderr, "System call scandir failed because of %e\n", error);
         exit(100);
     }
@@ -142,8 +142,9 @@ void RecDir(char * path, int flag) {
             strcat(buf, path);
             strcat(buf, "/");
             strcat(buf, mydirectory[j]->d_name);
-            if (lstat(buf, &myblock) < 0)
-                printf("stat error\n");
+            //if (
+            lstat(buf, &myblock);  // < 0)
+                //printf("stat error\n");
 
             permission(myblock);
 
@@ -165,13 +166,19 @@ void RecDir(char * path, int flag) {
             }
         }
     }
+
+    for(int k=0; k < numOfFiles; k++){
+        free(mydirectory[k]);
+    }
+
+    free(mydirectory);
 }
 
 
 void 
 ls(int optind, int argc, char* argv[], int file) {
     for(int i = optind; i < argc; i++) {
-        struct dirent **mydirectory;
+        struct dirent **mydirectory = NULL;
         struct stat mystat;
 
         if (lstat(argv[i], &mystat) == 0 && S_ISDIR(mystat.st_mode)) {
@@ -191,12 +198,10 @@ ls(int optind, int argc, char* argv[], int file) {
                     printf("%s:\n", argv[i]);
                 }
 
-                int total=0;
+                int total = 0;
                 int blocksize = 0;
                 //struct dirent **directory;
-                int numOfFiles;
-
-                //setlocale(LC_ALL, "C");
+                int numOfFiles = 0;
 
                 if(getenv("BLOCKSIZE") == NULL) {
                     blocksize = 1024;
@@ -235,8 +240,9 @@ ls(int optind, int argc, char* argv[], int file) {
                         strcat(buf, argv[i]);
                         strcat(buf, "/");
                         strcat(buf, mydirectory[j]->d_name);
-                        if (lstat(buf, &myblock) < 0)
-                            printf("stat error\n");
+                        //if (
+                        lstat(buf, &myblock);  //< 0)
+                            //printf("stat error\n");
 
                         permission(myblock);
 
@@ -247,17 +253,24 @@ ls(int optind, int argc, char* argv[], int file) {
                         printf("\n");
 
                     }
+                    //free(mydirectory[j]);
+                }
+
+                for(int k=0; k < numOfFiles; k++) {
+                    free(mydirectory[k]);
                 }
             }
 
             if (Rflag && S_ISDIR(mystat.st_mode) && !dflag) {
                 RecDir(argv[i], 1);
             }
+            
 
-            free(mydirectory);
         }
         //free(mydirectory);
         //closedir(mydir);
+        
+        free(mydirectory);
     }
 }
 
@@ -269,7 +282,8 @@ main(int argc, char* argv[])
     int exit_status = 0;
     //struct dirent *mydirectory;
     //struct stat mystat;
-    char buf[512];
+
+    //char buf[512];
     int c;
 
     while ((c = getopt (argc, argv, "dRl:")) != -1) {
@@ -298,16 +312,14 @@ main(int argc, char* argv[])
     //optind per parsare le cartelle e files
 
     //mydir = opendir(argv[argc-1]);
-
     if((argc - optind) == 0) {
         argv[optind] = ".";
         ++argc;
     }
 
-    if((argc - optind) >= 2)
-        qsort(&argv[optind], argc - optind, sizeof(char *) , cmpstring);
+    setlocale(LC_ALL, "C");
 
-    printf("sorting...\n");
+    //printf("sorting...\n");
     for(int i = optind; i < argc; i++){
         //printf("%s\n", argv[i]);
         if( access(argv[i], F_OK) != -1 ) {
@@ -320,11 +332,13 @@ main(int argc, char* argv[])
             exit_status++;
         }
     }
-    printf("file not existent...\n");
+    //printf("file not existent...\n");
+
+    if((argc - optind) >= 2)
+        qsort(&argv[optind], argc - optind, sizeof(char *) , cmpstring);
 
     int file = 0;
 
-    //TODO: FAR STAMPARE ANCHE I LINK
     for(int i = optind; i < argc; i++){
         //printf("%s\n", argv[i]);
         struct stat sb;
@@ -341,10 +355,10 @@ main(int argc, char* argv[])
             printf("\n");
         }
     }
-    printf("files in input...\n");
+    //printf("files in input...\n");
 
     ls(optind, argc, argv, file);
-    printf("other...\n");
+    //printf("other...\n");
 
     return exit_status;
 }
